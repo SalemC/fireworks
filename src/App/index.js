@@ -1,184 +1,184 @@
 import React, { Component, createRef } from 'react';
-import moment from 'moment';
 
+import { getRandomInt, calculateAge, getVisibility } from './helpers';
 import Firework from './components/Firework';
-import { getRandomInt } from './helpers';
+import Details from './components/Details';
 
 class App extends Component {
+    /**
+     * Our default state.
+     */
     state = {
-        dimensions: {
-            width: 0,
-            height: 0,
-        },
+        dimensions: { width: 0, height: 0 },
         fireworks: [],
-        visibility: {
-            visible: true,
-            hidden: '',
-            visibilityChange: '',
-        },
-        age: 0,
+        visibility: getVisibility(),
+        age: calculateAge(),
     }
 
+    /**
+     * The timeout for creating a firework.
+     */
     fireworkTimeout = null;
 
+    /**
+     * The interval between state cleanups.
+     */
     cleanInterval = null;
 
+    /**
+     * Our canvas.
+     */
     canvas = createRef();
 
+    /**
+     * Handle the mounting of our component.
+     *
+     * @return {void}
+     */
     componentDidMount () {
         this.handleResize();
 
         this.setupListeners();
-        this.setupIntervals();
+        this.setupTimings();
     }
 
+    /**
+     * Handle the unmounting of our component.
+     *
+     * @return {void}
+     */
     componentWillUnmount () {
-        this.removeListeners();
-        this.removeIntervals();
+        this.clearListeners();
+        this.clearTimings();
     }
 
     /**
-     * Setup all our intervals
+     * Setup all our intervals/timeouts.
+     *
+     * @return {void}
      */
-    setupIntervals = () => {
-        // Clean our state and animate our canvas every 7.5ms
-        this.cleanInterval = setInterval(() => {
-            this.cleanFireworks();
-        }, 7.5);
-
-        // Every 300-600ms, create another firework
-        const fireworkLoop = () => {
-            const { dimensions: { height }, visibility: { visible }} = this.state;
-
-            const acceleration = {
-                x: 0,
-                y: 0.1,
-            };
-
-            const velocity = {
-                x: -getRandomInt(-1, 1),
-                // SUVAT: v^2 = u^2 + 2as
-                y: -Math.sqrt(
-                    0 + ((2 * acceleration.y)
-                    // Explode anywhere between 80-90% of screen height
-                    * getRandomInt(height * 0.80, height * 0.90)
-                    ),
-                ),
-            };
-
-            // If our screen is visible, create fireworks
-            if (visible) {
-                this.createFirework(velocity, acceleration);
-            // If our screen isn't visible, reset our fireworks array
-            } else {
-                this.cleanFireworks(true);
-            }
-
-            clearTimeout(this.fireworkTimeout);
-            this.fireworkTimeout = setTimeout(fireworkLoop, getRandomInt(300, 600));
-        };
-
-        // Setup our first timeout
-        this.fireworkTimeout = setTimeout(fireworkLoop, getRandomInt(300, 600));
+    setupTimings = () => {
+        this.cleanInterval = setInterval(this.cleanFireworks, 7.5);
+        this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
     }
 
     /**
-     * Remove all our intervals
+     * Clear all our timeouts/intervals.
+     *
+     * @return {void}
      */
-    removeIntervals = () => {
+    clearTimings = () => {
         clearInterval(this.cleanInterval);
         clearInterval(this.fireworkTimeout);
     }
 
     /**
-     * Setup all our event listeners
+     * Setup all event listeners.
+     *
+     * @return {void}
      */
     setupListeners = () => {
-        this.setupVisibilityListener();
+        const { visibility: { visibilityChange } } = this.state;
 
         window.addEventListener('resize', this.handleResize);
+        document.addEventListener(visibilityChange, this.handleVisibilityChange);
     }
 
     /**
-     * Remove all our event listeners
+     * Clear all event listeners.
+     *
+     * @return {void}
      */
-    removeListeners = () => {
+    clearListeners = () => {
         const { visibility: { visibilityChange } } = this.state;
 
-        document.removeEventListener(visibilityChange, this.handleVisibilityChange);
         window.removeEventListener('resize', this.handleResize);
+        document.removeEventListener(visibilityChange, this.handleVisibilityChange);
     }
 
     /**
-     * Handle the window resize event
+     * Handle the window resize event.
+     *
+     * @return {void}
      */
-    handleResize = () => this.setState((current) => {
-        const next = { ...current };
-
-        next.dimensions = {
+    handleResize = () => this.setState({
+        dimensions: {
             width: window.innerWidth,
             height: window.innerHeight,
+        },
+    });
+
+    /**
+     * Handle our visibility change.
+     *
+     * @return {void}
+     */
+    handleVisibilityChange = () => this.setState(({ visibility }) => ({
+        visibility: {
+            ...visibility,
+            visible: !document[visibility.hidden]
+        },
+    }));
+
+    /**
+     * Start the firework display!
+     *
+     * @return {void}
+     */
+    startDisplay = () => {
+        const { dimensions: { height }, visibility: { visible }} = this.state;
+
+        const acceleration = { x: 0, y: 0.1 };
+
+        const velocity = {
+            x: -getRandomInt(-1, 1),
+            // SUVAT: v^2 = u^2 + 2as
+            y: -Math.sqrt(
+                0 + ((2 * acceleration.y)
+                // Explode anywhere between 80-90% of screen height
+                * getRandomInt(height * 0.80, height * 0.90)
+                ),
+            ),
         };
 
-        return next;
-    })
-
-    /**
-     * Setup a visibility listener to check if our window is foregrounded
-     */
-    setupVisibilityListener = () => this.setState((current) => {
-        const next = { ...current };
-
-        if (typeof document.hidden !== 'undefined') {
-            next.visibility.hidden = 'hidden';
-            next.visibility.visibilityChange = 'visibilitychange';
-        } else if (typeof document.msHidden !== 'undefined') {
-            next.visibility.hidden = 'msHidden';
-            next.visibility.visibilityChange = 'msvisibilitychange';
-        } else if (typeof document.webkitHidden !== 'undefined') {
-            next.visibility.hidden = 'webkitHidden';
-            next.visibility.visibilityChange = 'webkitvisibilitychange';
+        // If our screen is visible, create fireworks
+        if (visible) {
+            this.spawnFirework(velocity, acceleration);
+        // If our screen isn't visible, reset our fireworks array
+        } else {
+            this.cleanFireworks(true);
         }
 
-        return next;
-    }, () => {
-        const { visibility: { visibilityChange } } = this.state;
-
-        document.addEventListener(visibilityChange, this.handleVisibilityChange);
-    })
+        clearTimeout(this.fireworkTimeout);
+        this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
+    }
 
     /**
-     * Handle our visibility change
+     * Generate a firework & add it to our display.
+     *
+     * @param {Number} velocity
+     * @param {Number} acceleration
+     *
+     * @return {void}
      */
-    handleVisibilityChange = () => this.setState((current) => {
-        const next = { ...current };
-
-        next.visibility.visible = !document[next.visibility.hidden];
-
-        return next;
-    })
-
-    /**
-     * Create a single firework
-     */
-    createFirework = (velocity, acceleration) => this.setState((current) => {
-        const next = { ...current };
-
-        // If our screen is in the foreground, add more fireworks
-        if (next.visibility.visible) {
-            next.fireworks.push(new Firework(this.canvas.current, acceleration, velocity));
-        }
-
-        return next;
-    })
+    spawnFirework = (velocity, acceleration) => this.setState(({
+        visibility: { visible },
+        fireworks,
+    }) => ({
+        fireworks: [
+            ...fireworks,
+            visible ? new Firework(this.canvas.current, acceleration, velocity) : undefined,
+        ],
+    }));
 
     /**
-     * Animate our existing fireworks
+     * Animate our existing fireworks.
+     *
+     * @return {void}
      */
     animateFireworks = () => {
         const { fireworks, dimensions: { width, height } } = this.state;
 
-        // Grab our context from our canvas
         const context = this.canvas.current.getContext('2d');
 
         // Give a small trail effect to our fireworks
@@ -188,48 +188,34 @@ class App extends Component {
         context.globalCompositeOperation = 'source-over';
 
         // Draw our fireworks
-        fireworks.forEach((firework) => {
-            firework.update();
-            firework.draw();
-        });
+        fireworks.forEach(({ update, draw }) => { update(); draw(); });
     }
 
     /**
-     * Remove all our invalid fireworks
+     * Remove all our invalid fireworks.
+     *
+     * @param {Boolean} reset - Should we reset the display?
+     *
+     * @return {void}
      */
-    cleanFireworks = (reset = false) => this.setState((current) => {
-        const next = { ...current };
+    cleanFireworks = (reset = false) => this.setState(({ fireworks }) => ({
+        fireworks: reset ? [] : fireworks.filter(({ valid }) => !valid()),
+        age: calculateAge(),
+    }), this.animateFireworks);
 
-        // If we're resetting, empty our fireworks array
-        next.fireworks = reset ? [] : next.fireworks.filter(firework => !firework.valid());
-
-        // Calculate my age
-        next.age = moment().diff(moment('2000-03-23'), 'years');
-
-        return next;
-    }, this.animateFireworks)
-
-    getAgeText = () => {
-        const { age } = this.state;
-
-        const type = age.toString().startsWith('8') || age === 18 ? 'an' : 'a';
-
-        return `I'm ${type} ${age} year-old, web-based software developer.`;
-    }
-
+    /**
+     * Render our class.
+     *
+     * @return {void}
+     */
     render () {
-        const { dimensions } = this.state;
+        const { dimensions, age } = this.state;
 
         return (
             <div className="main-container">
                 <canvas ref={this.canvas} {...dimensions} />
 
-                <div className="details-container">
-                    <h1 className="white header">Salem Cresswell</h1>
-
-                    <p className="white secondary">{this.getAgeText()}</p>
-                    <p className="white secondary">On a day-to-day basis, I'll mainly program in Javascript, HTML & PHP.</p>
-                </div>
+                <Details age={age} />
             </div>
         )
     }

@@ -1,3 +1,5 @@
+import moment from 'moment';
+
 export const getRandomInt = (min = 0, max = 1) => {
     let minimum = min;
     let maximum = max;
@@ -54,3 +56,33 @@ export const invertColor = (hex) => {
 
     return `#${padZero(r)}${padZero(g)}${padZero(b)}`;
 };
+
+export const calculateAge = () => moment().diff(moment('2000-03-23'), 'years');
+
+export const getVisibility = () => {
+    if (typeof document.hidden !== 'undefined') {
+        return {
+            visible: true,
+            hidden: 'hidden',
+            visibilityChange: 'visibilitychange',
+        }
+    } else if (typeof document.msHidden !== 'undefined') {
+        return {
+            visible: true,
+            hidden: 'msHidden',
+            visibilityChange: 'msvisibilitychange',
+        }
+    } else if (typeof document.webkitHidden !== 'undefined') {
+        return {
+            visible: true,
+            hidden: 'webkitHidden',
+            visibilityChange: 'webkitvisibilitychange',
+        }
+    }
+
+    return {
+        visible: true,
+        hidden: '',
+        visibilityChange: '',
+    }
+}

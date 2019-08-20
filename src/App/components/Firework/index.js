@@ -1,7 +1,18 @@
 import { getRandomInt, getRandomColor } from '../../helpers';
-import { Particle, ChildParticle } from '../Particle';
+
+import ChildParticle from '../Particle/Child';
+import Particle from '../Particle';
 
 class Firework {
+    /**
+     * Firework class.
+     *
+     * @param {React.RefObject<any>.current} canvas
+     * @param {Number} gravity
+     * @param {Number} velocity
+     *
+     * @return {Firework}
+     */
     constructor (canvas, gravity, velocity) {
         this.canvas = canvas;
 
@@ -27,24 +38,37 @@ class Firework {
         this.particles = [];
     }
 
+    /**
+     * Is our firework still valid?
+     *
+     * @return {Boolean}
+     */
     valid = () => this.exploded && this.particles.length <= 0
 
+    /**
+     * Update the firework.
+     *
+     * @return {void}
+     */
     update = () => {
         const {
-            exploded, firework, explode, gravity,
+            exploded,
+            firework: {
+                applyForce,
+                update,
+                velocity
+            },
+            explode,
+            gravity,
         } = this;
-
-        const { applyForce, update, velocity } = firework;
 
         if (!exploded) {
             applyForce(gravity);
             update();
 
-            // If we've got 0 velocity or above, we've hit our apex.
+            // If we've got 0 velocity or above, we've hit our apex;
             // Let's explode the particle
-            if (velocity.y >= 0) {
-                explode();
-            }
+            if (velocity.y >= 0) { explode(); }
         } else {
             // Update each child particle
             this.particles.forEach((particle) => {
@@ -53,39 +77,45 @@ class Firework {
             });
 
             // Remove any invalid particles
-            this.particles = this.particles.filter(particle => !particle.valid());
+            this.particles = this.particles.filter(({ valid }) => !valid());
         }
     }
 
+    /**
+     * Make the firework explode.
+     *
+     * @return {void}
+     */
     explode = () => {
         const {
             firework, canvas, particles, color, velocity, hasInverted,
         } = this;
 
         // Make 100 child particles
-        Array(...Array(100)).forEach(() => {
-            particles.push(
-                new ChildParticle(
-                    firework.position.x,
-                    firework.position.y,
-                    canvas,
-                    color,
-                    velocity,
-                    hasInverted,
-                ),
-            );
-        });
+        new Array(100).fill(null).forEach(() => particles.push(
+            new ChildParticle(
+                firework.position.x,
+                firework.position.y,
+                canvas,
+                color,
+                velocity,
+                hasInverted,
+            ),
+        ));
 
         this.exploded = true;
     }
 
+    /**
+     * Draw the firework.
+     *
+     * @return {void}
+     */
     draw = () => {
         const { draw } = this.firework;
 
         // Once we've exploded, we don't want to draw the parent particle
-        if (!this.exploded) {
-            draw();
-        }
+        if (!this.exploded) { draw(); }
 
         // Draw each child particle
         this.particles.forEach(particle => particle.draw());
