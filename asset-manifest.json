@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.js": "/fireworks/static/js/main.3445632c.chunk.js",
+    "main.js.map": "/fireworks/static/js/main.3445632c.chunk.js.map",
+    "runtime~main.js": "/fireworks/static/js/runtime~main.2fe3de39.js",
+    "runtime~main.js.map": "/fireworks/static/js/runtime~main.2fe3de39.js.map",
+    "static/js/2.0c7055fd.chunk.js": "/fireworks/static/js/2.0c7055fd.chunk.js",
+    "static/js/2.0c7055fd.chunk.js.map": "/fireworks/static/js/2.0c7055fd.chunk.js.map",
+    "index.html": "/fireworks/index.html",
+    "precache-manifest.1580a536d81de18fa955433f4c8bf751.js": "/fireworks/precache-manifest.1580a536d81de18fa955433f4c8bf751.js",
+    "service-worker.js": "/fireworks/service-worker.js"
+  }
+}
