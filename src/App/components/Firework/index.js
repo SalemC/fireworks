@@ -13,7 +13,7 @@ class Firework {
      *
      * @return {Firework}
      */
-    constructor (canvas, gravity, velocity) {
+    constructor (canvas, gravity, velocity, randomize = true, x = 0) {
         this.canvas = canvas;
 
         this.color = getRandomColor();
@@ -26,7 +26,7 @@ class Firework {
         this.hasInverted = getRandomInt(0, 3) === 0;
 
         this.firework = new Particle(
-            getRandomInt(0, canvas.width),
+            randomize ? getRandomInt(0, canvas.width) : x,
             canvas.height,
             canvas,
             this.color,

@@ -86,3 +86,20 @@ export const getVisibility = () => {
         visibilityChange: '',
     }
 }
+
+export const generateCircle = ({ x, y }, numOfPoints, radius) => {
+    const step = 360 / numOfPoints;
+
+    const points = [];
+
+    for (let angle = 0; angle < 360; angle += step) {
+        let angleRad = angle * Math.PI / 180;
+
+        points.push({
+            x: x + (radius * Math.cos(angleRad)),
+            y: y + (radius * Math.sin(angleRad)),
+        });
+    }
+
+    return points;
+}

@@ -1,6 +1,6 @@
 import React, { Component, createRef } from 'react';
 
-import { getRandomInt, calculateAge, getVisibility } from './helpers';
+import { getRandomInt, calculateAge, getVisibility, generateCircle } from './helpers';
 import Firework from './components/Firework';
 import Details from './components/Details';
 
@@ -13,6 +13,7 @@ class App extends Component {
         fireworks: [],
         visibility: getVisibility(),
         age: calculateAge(),
+        secret: '',
     }
 
     /**
@@ -82,6 +83,7 @@ class App extends Component {
 
         window.addEventListener('resize', this.handleResize);
         document.addEventListener(visibilityChange, this.handleVisibilityChange);
+        document.addEventListener('keypress', this.handleKeyPress);
     }
 
     /**
@@ -94,6 +96,22 @@ class App extends Component {
 
         window.removeEventListener('resize', this.handleResize);
         document.removeEventListener(visibilityChange, this.handleVisibilityChange);
+        document.removeEventListener('keypress', this.handleKeyPress);
+    }
+
+    /**
+     * Handle a keyboard event.
+     */
+    handleKeyPress = ({ key }) => {
+        const { secret } = this.state;
+
+        if (process.env.REACT_APP_secret !== secret) {
+            if (process.env.REACT_APP_secret.charAt(secret.length) === key) {
+                this.setState({ secret: `${secret}${key}`});
+            } else {
+                this.setState({ secret: '' });
+            }
+        }
     }
 
     /**
@@ -126,31 +144,73 @@ class App extends Component {
      * @return {void}
      */
     startDisplay = () => {
-        const { dimensions: { height }, visibility: { visible }} = this.state;
+        const { dimensions: { height }/*, visibility: { visible } */} = this.state;
 
-        const acceleration = { x: 0, y: 0.1 };
+        const acceleration = { x: 0, y: 0.05 };
 
-        const velocity = {
-            x: -getRandomInt(-1, 1),
-            // SUVAT: v^2 = u^2 + 2as
-            y: -Math.sqrt(
-                0 + ((2 * acceleration.y)
-                // Explode anywhere between 80-90% of screen height
-                * getRandomInt(height * 0.80, height * 0.90)
-                ),
-            ),
-        };
+        const points = 15;
 
-        // If our screen is visible, create fireworks
-        if (visible) {
-            this.spawnFirework(velocity, acceleration);
-        // If our screen isn't visible, reset our fireworks array
-        } else {
-            this.cleanFireworks(true);
-        }
+        const bottomHalf = generateCircle({ x: 150, y: height * 0.435 }, points, 75).filter((value, key, arr) => key > arr.length / 1.6 || key < arr.length / 4.1);
+        const topHalf = generateCircle({ x: 150, y: height * 0.6 }, points, 75).filter((value, key, arr) => key < arr.length / 1.25);
 
-        clearTimeout(this.fireworkTimeout);
-        this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
+        topHalf.splice(0, 2);
+
+        const sFireworks = [
+            ...topHalf.map(({ x, y }) => new Firework(
+                this.canvas.current,
+                acceleration,
+                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
+                false,
+                x,
+            )),
+            ...bottomHalf.slice(0, bottomHalf.length / 2.1).reverse().map(({ x, y }) => new Firework(
+                this.canvas.current,
+                acceleration,
+                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
+                false,
+                x,
+            )),
+            ...bottomHalf.slice(bottomHalf.length / 2.1, bottomHalf.length).reverse().map(({ x, y }) => new Firework(
+                this.canvas.current,
+                acceleration,
+                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
+                false,
+                x,
+            )),
+        ];
+
+        setInterval(() => {
+            this.setState(({
+                fireworks,
+            }) => ({
+                fireworks: [
+                    ...fireworks,
+                    ...sFireworks.splice(0, 1),
+                ],
+            }))
+        }, 15);
+
+        // const velocity = {
+        //     x: -getRandomInt(-1, 1),
+        //     // SUVAT: v^2 = u^2 + 2as
+        //     y: -Math.sqrt(
+        //         0 + ((2 * acceleration.y)
+        //         // Explode anywhere between 80-90% of screen height
+        //         * getRandomInt(height * 0.80, height * 0.90)
+        //         ),
+        //     ),
+        // };
+
+        // // If our screen is visible, create fireworks
+        // if (visible) {
+        //     this.spawnFirework(velocity, acceleration);
+        // // If our screen isn't visible, reset our fireworks array
+        // } else {
+        //     this.cleanFireworks(true);
+        // }
+
+        // clearTimeout(this.fireworkTimeout);
+        // this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
     }
 
     /**
@@ -209,13 +269,13 @@ class App extends Component {
      * @return {void}
      */
     render () {
-        const { dimensions, age } = this.state;
+        const { dimensions, age, secret } = this.state;
 
         return (
             <div className="main-container">
                 <canvas ref={this.canvas} {...dimensions} />
 
-                <Details age={age} />
+                {secret !== process.env.REACT_APP_secret && <Details age={age} />}
             </div>
         )
     }
