@@ -9,7 +9,10 @@ class App extends Component {
      * Our default state.
      */
     state = {
-        dimensions: { width: 0, height: 0 },
+        dimensions: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+        },
         fireworks: [],
         visibility: getVisibility(),
         age: calculateAge(),
@@ -37,8 +40,6 @@ class App extends Component {
      * @return {void}
      */
     componentDidMount () {
-        this.handleResize();
-
         this.setupListeners();
         this.setupTimings();
     }
@@ -60,7 +61,8 @@ class App extends Component {
      */
     setupTimings = () => {
         this.cleanInterval = setInterval(this.cleanFireworks, 7.5);
-        this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
+
+        this.initialize();
     }
 
     /**
@@ -139,21 +141,18 @@ class App extends Component {
     }));
 
     /**
-     * Start the firework display!
-     *
-     * @return {void}
+     * Initialize the firework display!
      */
-    startDisplay = () => {
-        const { dimensions: { height }/*, visibility: { visible } */} = this.state;
+    initialize = () => {
+        const { dimensions: { height } } = this.state;
 
         const acceleration = { x: 0, y: 0.05 };
 
-        const points = 15;
+        const topHalf = generateCircle({ x: 150, y: height * 0.6 }, 15, 75);
+        const bottomHalf = generateCircle({ x: 150, y: height * 0.435 }, 15, 75);
 
-        const bottomHalf = generateCircle({ x: 150, y: height * 0.435 }, points, 75).filter((value, key, arr) => key > arr.length / 1.6 || key < arr.length / 4.1);
-        const topHalf = generateCircle({ x: 150, y: height * 0.6 }, points, 75).filter((value, key, arr) => key < arr.length / 1.25);
-
-        topHalf.splice(0, 2);
+        topHalf.splice(-3, 3);
+        bottomHalf.splice(4, 4);
 
         const sFireworks = [
             ...topHalf.map(({ x, y }) => new Firework(
@@ -163,14 +162,14 @@ class App extends Component {
                 false,
                 x,
             )),
-            ...bottomHalf.slice(0, bottomHalf.length / 2.1).reverse().map(({ x, y }) => new Firework(
+            ...bottomHalf.slice(0, bottomHalf.length / 2.5).reverse().map(({ x, y }) => new Firework(
                 this.canvas.current,
                 acceleration,
                 { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
                 false,
                 x,
             )),
-            ...bottomHalf.slice(bottomHalf.length / 2.1, bottomHalf.length).reverse().map(({ x, y }) => new Firework(
+            ...bottomHalf.slice(bottomHalf.length / 2.5, bottomHalf.length).reverse().map(({ x, y }) => new Firework(
                 this.canvas.current,
                 acceleration,
                 { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
@@ -179,38 +178,61 @@ class App extends Component {
             )),
         ];
 
-        setInterval(() => {
-            this.setState(({
-                fireworks,
-            }) => ({
-                fireworks: [
-                    ...fireworks,
-                    ...sFireworks.splice(0, 1),
-                ],
-            }))
-        }, 15);
+        const interval = setInterval(() => {
+            if (sFireworks.length > 0) {
+                this.setState(({
+                    fireworks,
+                }) => ({
+                    fireworks: [
+                        ...fireworks,
+                        ...sFireworks.splice(0, 1),
+                    ],
+                }))
+            } else {
+                clearInterval(interval);
 
-        // const velocity = {
-        //     x: -getRandomInt(-1, 1),
-        //     // SUVAT: v^2 = u^2 + 2as
-        //     y: -Math.sqrt(
-        //         0 + ((2 * acceleration.y)
-        //         // Explode anywhere between 80-90% of screen height
-        //         * getRandomInt(height * 0.80, height * 0.90)
-        //         ),
-        //     ),
-        // };
+                // Wait 3 seconds before cleaning our fireworks (there's a lot of particles so to reduce lag, we clean them)
+                // then start our display.
+                setTimeout(() => {
+                    this.cleanFireworks(true);
 
-        // // If our screen is visible, create fireworks
-        // if (visible) {
-        //     this.spawnFirework(velocity, acceleration);
-        // // If our screen isn't visible, reset our fireworks array
-        // } else {
-        //     this.cleanFireworks(true);
-        // }
+                    this.startDisplay();
+                }, 3000);
+            }
+        }, 40);
+    }
 
-        // clearTimeout(this.fireworkTimeout);
-        // this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
+    /**
+     * Start the firework display!
+     *
+     * @return {void}
+     */
+    startDisplay = () => {
+        const { dimensions: { height }, visibility: { visible } } = this.state;
+
+        const acceleration = { x: 0, y: 0.1 };
+
+        const velocity = {
+            x: -getRandomInt(-1, 1),
+            // SUVAT: v^2 = u^2 + 2as
+            y: -Math.sqrt(
+                0 + ((2 * acceleration.y)
+                // Explode anywhere between 80-90% of screen height
+                * getRandomInt(height * 0.80, height * 0.90)
+                ),
+            ),
+        };
+
+        // If our screen is visible, create fireworks
+        if (visible) {
+            this.spawnFirework(velocity, acceleration);
+        // If our screen isn't visible, reset our fireworks array
+        } else {
+            this.cleanFireworks(true);
+        }
+
+        clearTimeout(this.fireworkTimeout);
+        this.fireworkTimeout = setTimeout(this.startDisplay, getRandomInt(300, 600));
     }
 
     /**
