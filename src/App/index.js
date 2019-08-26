@@ -30,6 +30,11 @@ class App extends Component {
     cleanInterval = null;
 
     /**
+     * Intervals used for initializing the display.
+     */
+    initializingIntervals = {};
+
+    /**
      * Our canvas.
      */
     canvas = createRef();
@@ -144,62 +149,87 @@ class App extends Component {
      * Initialize the firework display!
      */
     initialize = () => {
-        const { dimensions: { height } } = this.state;
+        const { dimensions: { height, width } } = this.state;
+
+        this.startDisplay();
+
+        return;
 
         const acceleration = { x: 0, y: 0.05 };
 
-        const topHalf = generateCircle({ x: 150, y: height * 0.6 }, 15, 75);
-        const bottomHalf = generateCircle({ x: 150, y: height * 0.435 }, 15, 75);
+        const createFirework = ({ x, y }) => new Firework(
+            this.canvas.current,
+            acceleration,
+            { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
+            false,
+            x,
+        );
 
-        topHalf.splice(-3, 3);
-        bottomHalf.splice(4, 4);
+        const fireworks = {
+            s: [{
+                part: generateCircle({ x: width * 0.3, y: height * 0.6 }, 15, 75),
+                modifier: (part) => {
+                    part.splice(-3, 4);
 
-        const sFireworks = [
-            ...topHalf.map(({ x, y }) => new Firework(
-                this.canvas.current,
-                acceleration,
-                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
-                false,
-                x,
-            )),
-            ...bottomHalf.slice(0, bottomHalf.length / 2.5).reverse().map(({ x, y }) => new Firework(
-                this.canvas.current,
-                acceleration,
-                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
-                false,
-                x,
-            )),
-            ...bottomHalf.slice(bottomHalf.length / 2.5, bottomHalf.length).reverse().map(({ x, y }) => new Firework(
-                this.canvas.current,
-                acceleration,
-                { x: 0, y: -Math.sqrt(0 + ((2 * acceleration.y) * y))},
-                false,
-                x,
-            )),
-        ];
+                    return part;
+                }
+            }, {
+                part: generateCircle({ x: width * 0.3, y: height * 0.435 }, 15, 75),
+                modifier: (part) => {
+                    part.splice(4, 4);
 
-        const interval = setInterval(() => {
-            if (sFireworks.length > 0) {
-                this.setState(({
-                    fireworks,
-                }) => ({
-                    fireworks: [
-                        ...fireworks,
-                        ...sFireworks.splice(0, 1),
-                    ],
-                }))
-            } else {
-                clearInterval(interval);
+                    return part.slice(0, part.length / 2.5).reverse();
+                },
+            }, {
+                part: generateCircle({ x: width * 0.3, y: height * 0.435 }, 15, 75),
+                modifier: (part) => {
+                    part.splice(4, 4);
 
-                // Wait 3 seconds before cleaning our fireworks (there's a lot of particles so to reduce lag, we clean them)
-                // then start our display.
+                    return part.slice(part.length / 2.5, part.length).reverse();
+                },
+            }],
+            c: [{
+                part: generateCircle({ x: width * 0.6, y: height * 0.518 }, 15, 150),
+                modifier: (part) => {
+                    part.splice(0, 3);
+                    part.splice(-2, 3);
+
+                    return part;
+                },
+            }],
+        }
+
+        Object.entries(fireworks).forEach(([shape, parts]) => {
+            const subParts = parts.reduce((acc, { part, modifier }) => [...acc, ...modifier(part)], []);
+
+            this.initializingIntervals[shape] = setInterval(() => {
+                const firework = createFirework(subParts.splice(0, 1)[0]);
+
+                this.setState(({ fireworks: sFireworks }) => ({
+                    fireworks: [...sFireworks, firework],
+                }));
+
+                this.cleanFireworks();
+
+                if (subParts.length <= 0) {
+                    clearInterval(this.initializingIntervals[shape]);
+
+                    delete this.initializingIntervals[shape];
+                }
+            }, 1);
+        });
+
+        const startInterval = setInterval(() => {
+            if (Object.keys(this.initializingIntervals).length <= 0) {
                 setTimeout(() => {
                     this.cleanFireworks(true);
 
                     this.startDisplay();
-                }, 3000);
+                }, 4000);
+
+                clearInterval(startInterval);
             }
-        }, 40);
+        }, 1)
     }
 
     /**
